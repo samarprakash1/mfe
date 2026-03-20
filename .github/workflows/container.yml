@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - main
-    # 🔥 Remove paths filter for now (add later after testing)
-    # paths:
-    #   - 'packages/container/**'
 
 defaults:
   run:
@@ -17,21 +14,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # ✅ Checkout code
       - name: Checkout code
         uses: actions/checkout@v4
 
-      
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
 
-      # ✅ Install dependencies
       - name: Install dependencies
         run: npm install
 
-      # ✅ Build project
       - name: Build project
         run: npm run build
 
-      # 🔍 Debug: Check dist folder exists
       - name: Check dist folder
         run: |
           if [ ! -d "dist" ]; then
@@ -39,21 +35,18 @@ jobs:
             exit 1
           fi
 
-      # ✅ Configure AWS credentials
-      - name: Test AWS connection
-        run: aws s3 ls
+      # ✅ Configure AWS FIRST
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
 
-      # ✅ Deploy to S3
+      # ✅ THEN test
+      - name: Test AWS connection
+        run: aws s3 ls
+
+      # ✅ Deploy
       - name: Deploy to S3
         run: aws s3 sync dist s3://${{ secrets.AWS_S3_BUCKET_NAME }}/container/latest --delete
-
-      # 🚀 Optional: CloudFront Invalidation (uncomment if using CDN)
-      # - name: Invalidate CloudFront
-      #   run: aws cloudfront create-invalidation \
-      #         --distribution-id ${{ secrets.AWS_DISTRIBUTION_ID }} \
-      #         --paths "/*"
