@@ -4,8 +4,9 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'packages/container/**'
+    # 🔥 Remove paths filter for now (add later after testing)
+    # paths:
+    #   - 'packages/container/**'
 
 defaults:
   run:
@@ -16,34 +17,48 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # ✅ Checkout code
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # ✅ Setup Node
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 18
-          # Note: cache 'npm' works best if the lockfile is in the working directory
           cache: 'npm'
-          cache-dependency-path: packages/container/package-lock.json
+          cache-dependency-path: package-lock.json
 
+      # ✅ Install dependencies
       - name: Install dependencies
         run: npm install
 
+      # ✅ Build project
       - name: Build project
         run: npm run build
 
+      # 🔍 Debug: Check dist folder exists
+      - name: Check dist folder
+        run: |
+          if [ ! -d "dist" ]; then
+            echo "❌ dist folder not found"
+            exit 1
+          fi
+
+      # ✅ Configure AWS credentials
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4 # Updated to v4 (latest stable)
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-south-1
 
-      # ✅ Deploy with --delete flag to remove old files
+      # ✅ Deploy to S3
       - name: Deploy to S3
         run: aws s3 sync dist s3://${{ secrets.AWS_S3_BUCKET_NAME }}/container/latest --delete
 
-      # ⚡ Optional: Invalidate CloudFront (Recommended if you use a CDN)
-      # - name: Create CloudFront Invalidation
-      #   run: aws cloudfront create-invalidation --distribution-id ${{ secrets.AWS_DISTRIBUTION_ID }} --paths "/container/latest/index.html"
+      # 🚀 Optional: CloudFront Invalidation (uncomment if using CDN)
+      # - name: Invalidate CloudFront
+      #   run: aws cloudfront create-invalidation \
+      #         --distribution-id ${{ secrets.AWS_DISTRIBUTION_ID }} \
+      #         --paths "/*"
