@@ -1,17 +1,23 @@
 const {merge} = require('webpack-merge') // used to merge config
-const HtmlWebpackPlugin=require('html-webpack-plugin')
-
-const devConfig={
-    mode:'development',
-    devServer:{
-        port:8081,
-        historyApiFallback:{
-            index:"index.html"
-        }
+const ModuleFederation=require('webpack/lib/container/ModuleFederationPlugin')
+const packageJson =require('../package.json')
+const commonConfig =require('./webpack.common')
+const domain=process.env.PRODUCTION_DOMAIN;
+const prodConfig={
+    mode:'production',
+    output:{
+        filename:'[name].[contenthash].js'
     },
     plugins:[
-        new HtmlWebpackPlugin({
-            template:'./public/index.html'
+        new ModuleFederation({
+            name:"container",
+            remotes:{
+                marketing:`marketing@${domain}/marteking/remoteEntry.js`
+            },
+            shared:packageJson.dependencies
         })
     ]
+    
 }
+
+module.exports=merge(commonConfig,prodConfig)
