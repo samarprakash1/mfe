@@ -1,3 +1,58 @@
+# name: deploy-container
+
+# on:
+#   push:
+#     branches:
+#       - main
+
+# defaults:
+#   run:
+#     working-directory: packages/container
+
+# jobs:
+#   build:
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
+
+#       - name: Setup Node
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: 18
+
+#       - name: Install dependencies
+#         run: npm install
+
+#       - name: Build project
+#         run: npm run build
+
+#       - name: Check dist folder
+#         run: |
+#           if [ ! -d "dist" ]; then
+#             echo "❌ dist folder not found"
+#             exit 1
+#           fi
+
+#       # ✅ Configure AWS FIRST
+#       - name: Configure AWS credentials
+#         uses: aws-actions/configure-aws-credentials@v4
+#         with:
+#           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#           aws-region: ap-south-1
+
+#       # ✅ THEN test
+#       - name: Test AWS connection
+#         run: aws s3 ls
+
+#       # ✅ Deploy
+#       - name: Deploy to S3
+#         run: aws s3 sync dist s3://${{ secrets.AWS_S3_BUCKET_NAME }}/container/latest --delete
+
+#         # run: aws cloudfront create-invalidation --distribution-id ${{ secrets.AWS_DISTRIBUTION_ID }} --paths "/container/latest/index.html"
+
 name: deploy-container
 
 on:
@@ -21,6 +76,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 18
+          cache: 'npm'
 
       - name: Install dependencies
         run: npm install
@@ -35,7 +91,6 @@ jobs:
             exit 1
           fi
 
-      # ✅ Configure AWS FIRST
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -43,10 +98,13 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-south-1
 
-      # ✅ THEN test
       - name: Test AWS connection
         run: aws s3 ls
 
-      # ✅ Deploy
       - name: Deploy to S3
         run: aws s3 sync dist s3://${{ secrets.AWS_S3_BUCKET_NAME }}/container/latest --delete
+
+      - name: Invalidate CloudFront cache
+        run: aws cloudfront create-invalidation \
+              --distribution-id ${{ secrets.AWS_DISTRIBUTION_ID }} \
+              --paths "/*"
